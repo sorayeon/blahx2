@@ -6,13 +6,43 @@ import axios, { AxiosResponse } from 'axios';
 import { ServiceLayout } from '@/components/service_layout';
 import { useAuth } from '@/contexts/auth_user.context';
 import { InAuthUser } from '@/models/in_auth_user';
+import { PostMessage } from '@/models/message/message.model';
 
 interface Props {
   userInfo: InAuthUser | null;
 }
 
+const BROKEN_IMAGE = 'https://bit.ly/broken-link';
+
+async function postMessage({ uid, message, author }: PostMessage) {
+  if (message.length <= 0) {
+    return {
+      result: false,
+      message: '메시지를 입력해주세요',
+    };
+  }
+  try {
+    await fetch('/api/messages.add', {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ uid, message, author }),
+    });
+    return {
+      result: true,
+    };
+  } catch (err) {
+    console.error(err);
+    return {
+      result: false,
+      message: '메시지 등록 실패',
+    };
+  }
+}
+
 const UserHomePage: NextPage<Props> = function ({ userInfo }) {
-  const [message, setMessate] = useState('');
+  const [message, setMessage] = useState('');
   const [isAnonymous, setAnonymous] = useState(true);
   const toast = useToast();
   const { authUser } = useAuth();
@@ -21,11 +51,11 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
   }
 
   return (
-    <ServiceLayout title="user home" minH="100vh" backgroundColor="gray.50">
+    <ServiceLayout title={`${userInfo.displayName}의 홈`} minH="100vh" backgroundColor="gray.50">
       <Box maxW="md" mx="auto" pt="6">
         <Box borderWidth="1px" borderRadius="lg" overflow="hidden" mb="2" bg="white">
           <Flex p="6">
-            <Avatar size="lg" src={userInfo.photoURL ?? 'https://bit.ly/broken-link'} mr="2" />
+            <Avatar size="lg" src={userInfo.photoURL ?? BROKEN_IMAGE} mr="2" />
             <Flex direction="column" justify="center">
               <Text fontSize="md">{userInfo.displayName}</Text>
               <Text fontSize="xs">{userInfo.email}</Text>
@@ -34,11 +64,7 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
         </Box>
         <Box borderWidth="1px" borderRadius="lg" overflow="hidden" mb="2" bg="white">
           <Flex align="center" p="2">
-            <Avatar
-              size="xs"
-              src={isAnonymous ? 'https://bit.ly/broken-link' : authUser?.photoURL ?? 'https://bit.ly/broken-link'}
-              mr="2"
-            />
+            <Avatar size="xs" src={isAnonymous ? BROKEN_IMAGE : authUser?.photoURL ?? BROKEN_IMAGE} mr="2" />
             <Textarea
               bg="gray.100"
               border="none"
@@ -62,7 +88,7 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
                     return;
                   }
                 }
-                setMessate(e.currentTarget.value);
+                setMessage(e.currentTarget.value);
               }}
             />
             <Button
@@ -72,6 +98,23 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
               colorScheme="yellow"
               variant="solid"
               size="sm"
+              onClick={async () => {
+                const postData: PostMessage = {
+                  uid: userInfo.uid,
+                  message,
+                };
+                if (isAnonymous === false) {
+                  postData.author = {
+                    displayName: authUser?.displayName ?? 'anonymous',
+                    photoURL: authUser?.photoURL ?? BROKEN_IMAGE,
+                  };
+                }
+                const messageResp = await postMessage(postData);
+                if (messageResp.result === false) {
+                  toast({ title: '메시지 등록 실패', position: 'top-right' });
+                }
+                setMessage('');
+              }}
             >
               등록
             </Button>

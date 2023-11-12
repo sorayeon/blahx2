@@ -1,9 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import BadReqError from './error/bad_request_error';
-import MessageModel from '@/models/message/message.model';
+import MessageModel, { PostMessage } from '@/models/message/message.model';
 
 async function post(req: NextApiRequest, res: NextApiResponse) {
-  const { uid, message, author } = req.body;
+  const { uid, message, author }: PostMessage = req.body;
 
   if (uid === undefined) {
     throw new BadReqError('uid 누락');

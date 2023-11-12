@@ -5,7 +5,7 @@ import { firestore } from 'firebase-admin';
 const MEMBER_COL = 'members';
 const MESSAGE_COL = 'messages';
 
-interface Props {
+export interface PostMessage {
   uid: string;
   message: string;
   author?: {
@@ -15,7 +15,7 @@ interface Props {
 }
 
 const { Firestore } = FirebaseAdmin.getInstance();
-async function post({ uid, message, author }: Props) {
+async function post({ uid, message, author }: PostMessage) {
   const memberRef = Firestore.collection(MEMBER_COL).doc(uid);
   await Firestore.runTransaction(async (transation) => {
     const memberDoc = await transation.get(memberRef);
