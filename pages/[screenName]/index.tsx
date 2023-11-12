@@ -155,7 +155,7 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
         <VStack spacing="12px" mt="6">
           <MessageItem
             uid="asdf"
-            displayName={authUser?.displayName}
+            displayName="test"
             photoURL={authUser?.photoURL ?? ''}
             isOwner={false}
             item={{
@@ -164,6 +164,17 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
               createAt: '2023-10-12T23:40:55+09:00',
               reply: 'replayrere',
               replyAt: '2023-11-11T23:40:55+09:00',
+            }}
+          />
+          <MessageItem
+            uid="asdf"
+            displayName="test2"
+            photoURL={authUser?.photoURL ?? ''}
+            isOwner={true}
+            item={{
+              id: 'test',
+              message: 'test',
+              createAt: '2023-04-12T23:40:55+09:00',
             }}
           />
         </VStack>

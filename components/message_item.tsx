@@ -1,6 +1,7 @@
 import { InMessage } from '@/models/message/in_message';
+import ResizeTextarea from 'react-textarea-autosize';
 import convertDateToString from '@/utils/convert_date_to_string';
-import { Avatar, Box, Divider, Flex, Text } from '@chakra-ui/react';
+import { Avatar, Box, Button, Divider, Flex, Text, Textarea } from '@chakra-ui/react';
 export const BROKEN_IMAGE = 'https://bit.ly/broken-link';
 
 interface Props {
@@ -11,7 +12,7 @@ interface Props {
   item: InMessage;
 }
 
-const MessageItem = function ({ displayName, photoURL, item }: Props) {
+const MessageItem = function ({ displayName, photoURL, isOwner, item }: Props) {
   const haveReply = item.reply !== undefined;
   return (
     <Box borderRadius="md" width="full" bg="white" boxShadow="md">
@@ -50,6 +51,31 @@ const MessageItem = function ({ displayName, photoURL, item }: Props) {
                   {item.reply}
                 </Text>
               </Box>
+            </Flex>
+          </Box>
+        )}
+        {haveReply === false && isOwner && (
+          <Box pt="2">
+            <Divider />
+            <Flex mt="2">
+              <Box pt="1">
+                <Avatar size="xs" src={photoURL} mr="2" />
+              </Box>
+              <Box borderRadius="md" width="full" bg="gray.100" mr="2">
+                <Textarea
+                  border="none"
+                  boxShadow="none !important"
+                  resize="none"
+                  minH="unset"
+                  overflow="hidden"
+                  fontSize="xs"
+                  placeholder="댓글을 입력하세요..."
+                  as={ResizeTextarea}
+                />
+              </Box>
+              <Button colorScheme="pink" bgColor="#FF75B5" variant="solid" size="sm">
+                등록
+              </Button>
             </Flex>
           </Box>
         )}
