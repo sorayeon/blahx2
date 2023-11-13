@@ -18,8 +18,8 @@ import axios, { AxiosResponse } from 'axios';
 import { ServiceLayout } from '@/components/service_layout';
 import { useAuth } from '@/contexts/auth_user.context';
 import { InAuthUser } from '@/models/in_auth_user';
-import { PostMessage } from '@/models/message/message.model';
 import MessageItem from '@/components/message_item';
+import { PostMessage } from '@/models/message/in_message';
 
 interface Props {
   userInfo: InAuthUser | null;
@@ -170,7 +170,7 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
             uid="asdf"
             displayName="test2"
             photoURL={authUser?.photoURL ?? ''}
-            isOwner={true}
+            isOwner
             item={{
               id: 'test',
               message: 'test',

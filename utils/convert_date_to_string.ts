@@ -38,7 +38,7 @@ function convertDateToString(dateString: string): string {
     return `${days}일`;
   }
   if (years === 0) {
-    return `${months}일`;
+    return `${months}개월`;
   }
   return `${years}년`;
 }
