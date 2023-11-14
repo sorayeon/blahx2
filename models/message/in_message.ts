@@ -29,3 +29,8 @@ export interface PostMessage {
     photoURL?: string;
   };
 }
+export interface PostMessageReply {
+  uid: string;
+  messageId: string;
+  reply: string;
+}
