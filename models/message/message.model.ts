@@ -1,7 +1,7 @@
 import { firestore } from 'firebase-admin';
 import BadReqError from '@/controllers/error/bad_request_error';
 import FirebaseAdmin from '../firebase_admin';
-import { InMessage, InMessageServer, PostMessage } from './in_message';
+import { InMessage, InMessageServer, PostMessage, PostMessageReply } from './in_message';
 
 const MEMBER_COL = 'members';
 const MESSAGE_COL = 'messages';
@@ -58,7 +58,29 @@ async function list({ uid }: { uid: string }) {
   return listData;
 }
 
-async function postReply({ uid, messageId, reply }: { uid: string; messageId: string; reply: string }) {
+async function get({ uid, messageId }: { uid: string; messageId: string }) {
+  const memberRef = Firestore.collection(MEMBER_COL).doc(uid);
+  const messageRef = memberRef.collection(MESSAGE_COL).doc(messageId);
+  const data = await Firestore.runTransaction(async (transation) => {
+    const memberDoc = await transation.get(memberRef);
+    const messageDoc = await transation.get(messageRef);
+    if (memberDoc.exists === false) {
+      throw new BadReqError('존재하지않는 사용자');
+    }
+    if (messageDoc.exists === false) {
+      throw new BadReqError('존재하지않는 문서');
+    }
+    const messageData = messageDoc.data() as InMessageServer;
+    return {
+      ...messageData,
+      id: messageId,
+      createAt: messageData.createAt.toDate().toISOString(),
+      replyAt: messageData.replyAt ? messageData.replyAt.toDate().toISOString() : undefined,
+    };
+  });
+  return data;
+}
+async function postReply({ uid, messageId, reply }: PostMessageReply) {
   const memberRef = Firestore.collection(MEMBER_COL).doc(uid);
   const messageRef = memberRef.collection(MESSAGE_COL).doc(messageId);
   await Firestore.runTransaction(async (transation) => {
@@ -70,7 +92,7 @@ async function postReply({ uid, messageId, reply }: { uid: string; messageId: st
     if (messageDoc.exists === false) {
       throw new BadReqError('존재하지않는 문서');
     }
-    const messageData = memberDoc.data() as InMessageServer;
+    const messageData = messageDoc.data() as InMessageServer;
     if (messageData.reply !== undefined) {
       throw new BadReqError('이미 댓글을 입력했습니다.');
     }
@@ -81,6 +103,7 @@ async function postReply({ uid, messageId, reply }: { uid: string; messageId: st
 const MessageModel = {
   post,
   list,
+  get,
   postReply,
 };
 
