@@ -57,6 +57,7 @@ async function postMessage({ uid, message, author }: PostMessage) {
 const UserHomePage: NextPage<Props> = function ({ userInfo }) {
   const [message, setMessage] = useState('');
   const [messageList, setMessageList] = useState<InMessage[]>([]);
+  const [messageListFetchTrigger, setMessageListFetchTrigger] = useState(false);
   const [isAnonymous, setAnonymous] = useState(true);
   const toast = useToast();
   const { authUser } = useAuth();
@@ -75,7 +76,7 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
   useEffect(() => {
     if (userInfo === null) return;
     fetchMessageList(userInfo.uid);
-  }, [userInfo]);
+  }, [userInfo, messageListFetchTrigger]);
   if (userInfo === null) {
     return <p>사용자를 찾을 수 없습니다.</p>;
   }
@@ -179,6 +180,9 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
                 photoURL={userInfo.photoURL ?? BROKEN_IMAGE}
                 isOwner={isOwner}
                 item={messageData}
+                onSendComplete={() => {
+                  setMessageListFetchTrigger((prev) => !prev);
+                }}
               />
             );
           })}
