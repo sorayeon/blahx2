@@ -40,7 +40,7 @@ async function list({ uid }: { uid: string }) {
     if (memberDoc.exists === false) {
       throw new BadReqError('존재하지않는 사용자');
     }
-    const messageCol = memberRef.collection(MESSAGE_COL);
+    const messageCol = memberRef.collection(MESSAGE_COL).orderBy('createAt', 'desc');
     const messageDoc = await transation.get(messageCol);
     const data = messageDoc.docs.map((mv) => {
       const docData = mv.data() as Omit<InMessageServer, 'id'>;
