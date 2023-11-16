@@ -2,20 +2,30 @@ import { firestore } from 'firebase-admin';
 import BadReqError from '@/controllers/error/bad_request_error';
 import FirebaseAdmin from '../firebase_admin';
 import { InMessage, InMessageServer, PostMessage, PostMessageReply } from './in_message';
+import { InAuthUser } from '../in_auth_user';
 
 const MEMBER_COL = 'members';
 const MESSAGE_COL = 'messages';
+
+const DEFAULT_SIZE = 10;
 
 const { Firestore } = FirebaseAdmin.getInstance();
 async function post({ uid, message, author }: PostMessage) {
   const memberRef = Firestore.collection(MEMBER_COL).doc(uid);
   await Firestore.runTransaction(async (transation) => {
+    let messageCount = 1;
     const memberDoc = await transation.get(memberRef);
     if (memberDoc.exists === false) {
       throw new BadReqError('존재하지않는 사용자');
     }
+    const memberInfo = memberDoc.data() as InAuthUser & { messageCount?: number };
+    if (memberInfo.messageCount !== undefined) {
+      messageCount = memberInfo.messageCount;
+    }
+
     const newMessageRef = memberRef.collection(MESSAGE_COL).doc();
     const newMessageBody: {
+      messageNo: number;
       message: string;
       createAt: firestore.FieldValue;
       author?: {
@@ -23,6 +33,7 @@ async function post({ uid, message, author }: PostMessage) {
         photoURL?: string;
       };
     } = {
+      messageNo: messageCount,
       message,
       createAt: firestore.FieldValue.serverTimestamp(),
     };
@@ -30,6 +41,7 @@ async function post({ uid, message, author }: PostMessage) {
       newMessageBody.author = author;
     }
     await transation.set(newMessageRef, newMessageBody);
+    await transation.update(memberRef, { messageCount: messageCount + 1 });
   });
 }
 
@@ -53,6 +65,53 @@ async function list({ uid }: { uid: string }) {
       return returnData;
     });
     return data;
+  });
+
+  return listData;
+}
+
+async function listWithPage({ uid, page = 1, size = DEFAULT_SIZE }: { uid: string; page?: number; size?: number }) {
+  const memberRef = Firestore.collection(MEMBER_COL).doc(uid);
+  const listData = await Firestore.runTransaction(async (transation) => {
+    const memberDoc = await transation.get(memberRef);
+    if (memberDoc.exists === false) {
+      throw new BadReqError('존재하지않는 사용자');
+    }
+    const memberInfo = memberDoc.data() as InAuthUser & { messageCount?: number };
+    const { messageCount = 0 } = memberInfo;
+    const totalElements = messageCount !== 0 ? messageCount - 1 : 0;
+    const remains = totalElements % size;
+    const totalPages = (totalElements - remains) / size + (remains > 0 ? 1 : 0);
+    const startAt = totalElements - (page - 1) * size;
+    console.log('totalElements {} remains {} totalPages {} startAt {}', totalElements, remains, totalPages, startAt);
+    if (startAt < 0) {
+      return {
+        totalElements,
+        totalPages: 0,
+        page,
+        size,
+        content: [],
+      };
+    }
+    const messageCol = memberRef.collection(MESSAGE_COL).orderBy('messageNo', 'desc').startAt(startAt).limit(size);
+    const messageDoc = await transation.get(messageCol);
+    const data = messageDoc.docs.map((mv) => {
+      const docData = mv.data() as Omit<InMessageServer, 'id'>;
+      const returnData = {
+        ...docData,
+        id: mv.id,
+        createAt: docData.createAt.toDate().toISOString(),
+        replyAt: docData.replyAt ? docData.replyAt.toDate().toISOString() : undefined,
+      } as InMessage;
+      return returnData;
+    });
+    return {
+      totalElements,
+      totalPages,
+      page,
+      size,
+      content: data,
+    };
   });
 
   return listData;
@@ -103,6 +162,7 @@ async function postReply({ uid, messageId, reply }: PostMessageReply) {
 const MessageModel = {
   post,
   list,
+  listWithPage,
   get,
   postReply,
 };
