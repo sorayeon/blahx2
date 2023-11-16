@@ -21,6 +21,7 @@ import { useAuth } from '@/contexts/auth_user.context';
 import { InAuthUser } from '@/models/in_auth_user';
 import MessageItem from '@/components/message_item';
 import { InMessage, PostMessage } from '@/models/message/in_message';
+import { useQuery } from 'react-query';
 
 interface Props {
   userInfo: InAuthUser | null;
@@ -65,26 +66,6 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
   const toast = useToast();
   const { authUser } = useAuth();
 
-  async function fetchMessageList(uid: string) {
-    try {
-      const resp = await fetch(`/api/messages.list?uid=${uid}&page=${page}`);
-
-      if (resp.status === 200) {
-        const data: {
-          totalElements: number;
-          totalPages: number;
-          page: number;
-          size: number;
-          content: InMessage[];
-        } = await resp.json();
-        //console.info(data);
-        setTotalPages(data.totalPages);
-        setMessageList((prev) => [...prev, ...data.content]);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
   async function fetchMessageInfo({ uid, messageId }: { uid: string; messageId: string }) {
     try {
       const resp = await fetch(`/api/messages.info?uid=${uid}&messageId=${messageId}`);
@@ -105,10 +86,32 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
     }
   }
 
-  useEffect(() => {
-    if (userInfo === null) return;
-    fetchMessageList(userInfo.uid);
-  }, [userInfo, messageListFetchTrigger, page]);
+  const messageListQueryKey = ['messageList', userInfo?.uid, page, messageListFetchTrigger];
+  useQuery(
+    messageListQueryKey,
+    async () => {
+      const data = axios.get<{
+        totalElements: number;
+        totalPages: number;
+        page: number;
+        size: number;
+        content: InMessage[];
+      }>(`/api/messages.list?uid=${userInfo?.uid}&page=${page}`);
+      return data;
+    },
+    {
+      keepPreviousData: true,
+      refetchOnWindowFocus: false,
+      onSuccess: (data) => {
+        setTotalPages(data.data.totalPages);
+        if (page == 1) {
+          setMessageList(data.data.content);
+          return;
+        }
+        setMessageList((prev) => [...prev, ...data.data.content]);
+      },
+    },
+  );
 
   if (userInfo === null) {
     return <p>사용자를 찾을 수 없습니다.</p>;
@@ -178,7 +181,10 @@ const UserHomePage: NextPage<Props> = function ({ userInfo }) {
                   toast({ title: '메시지 등록 실패', position: 'top-right' });
                 }
                 setMessage('');
-                setMessageListFetchTrigger((prev) => !prev);
+                setPage(1);
+                setTimeout(() => {
+                  setMessageListFetchTrigger((prev) => !prev);
+                }, 50);
               }}
             >
               등록
