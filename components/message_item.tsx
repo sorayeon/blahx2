@@ -15,9 +15,11 @@ import {
   Spacer,
   Text,
   Textarea,
+  useToast,
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import MoreBtnIcon from './more_btn_icon';
+import FirebaseClient from '@/models/firebase_client';
 export const BROKEN_IMAGE = 'https://bit.ly/broken-link';
 
 interface Props {
@@ -31,6 +33,7 @@ interface Props {
 
 const MessageItem = function ({ uid, displayName, photoURL, isOwner, item, onSendComplete }: Props) {
   const [reply, setReply] = useState('');
+  const toast = useToast();
 
   async function postReply() {
     const resp = await fetch('/api/messages.add.reply', {
@@ -48,7 +51,31 @@ const MessageItem = function ({ uid, displayName, photoURL, isOwner, item, onSen
     }
   }
 
+  async function updateDeny({ deny }: { deny: boolean }) {
+    const token = await FirebaseClient.getInstance().Auth.currentUser?.getIdToken();
+    if (token === undefined) {
+      toast({
+        title: '로그인한 사용자만 사용할 수 있는 메뉴입니다.',
+      });
+      return;
+    }
+    const resp = await fetch('/api/messages.deny', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', authorization: token },
+      body: JSON.stringify({
+        uid,
+        messageId: item.id,
+        deny,
+      }),
+    });
+
+    if (resp.status < 300) {
+      onSendComplete();
+    }
+  }
+
   const haveReply = item.reply !== undefined;
+  const isDeny = item.deny !== undefined ? item.deny === true : false;
   return (
     <Box borderRadius="md" width="full" bg="white" boxShadow="md">
       <Box>
@@ -73,7 +100,13 @@ const MessageItem = function ({ uid, displayName, photoURL, isOwner, item, onSen
                 size="xs"
               />
               <MenuList>
-                <MenuItem>비공개 처리</MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    updateDeny({ deny: item.deny !== undefined ? !item.deny : true });
+                  }}
+                >
+                  {isDeny ? '비공개 처리 해제' : '비공개 처리'}
+                </MenuItem>
               </MenuList>
             </Menu>
           )}
