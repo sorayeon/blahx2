@@ -1,7 +1,7 @@
 import { firestore } from 'firebase-admin';
 import BadReqError from '@/controllers/error/bad_request_error';
 import FirebaseAdmin from '../firebase_admin';
-import { InMessage, InMessageServer, PostMessage, PostMessageReply } from './in_message';
+import { InMessage, InMessageServer, PostMessage, PostMessageReply, PostMessageDeny } from './in_message';
 import { InAuthUser } from '../in_auth_user';
 
 const MEMBER_COL = 'members';
@@ -159,12 +159,39 @@ async function postReply({ uid, messageId, reply }: PostMessageReply) {
   });
 }
 
+async function updateDeny({ uid, messageId, deny = true }: PostMessageDeny) {
+  const memberRef = Firestore.collection(MEMBER_COL).doc(uid);
+  const messageRef = memberRef.collection(MESSAGE_COL).doc(messageId);
+  const result = await Firestore.runTransaction(async (transation) => {
+    const memberDoc = await transation.get(memberRef);
+    const messageDoc = await transation.get(messageRef);
+    if (memberDoc.exists === false) {
+      throw new BadReqError('존재하지않는 사용자');
+    }
+    if (messageDoc.exists === false) {
+      throw new BadReqError('존재하지않는 문서');
+    }
+    await transation.update(messageRef, { deny });
+    const messageData = messageDoc.data() as InMessageServer;
+    return {
+      ...messageData,
+      id: messageId,
+      deny,
+      createAt: messageData.createAt.toDate().toISOString(),
+      replyAt: messageData.replyAt ? messageData.replyAt.toDate().toISOString() : undefined,
+    };
+  });
+  return result;
+}
+
 const MessageModel = {
   post,
   list,
   listWithPage,
   get,
   postReply,
+  updateDeny,
 };
 
 export default MessageModel;
+0;

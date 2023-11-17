@@ -1,7 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import BadReqError from './error/bad_request_error';
 import MessageModel from '@/models/message/message.model';
-import { PostMessage, PostMessageReply } from '@/models/message/in_message';
+import { PostMessage, PostMessageReply, PostMessageDeny } from '@/models/message/in_message';
+import AuthorizationError from './error/authorization_error';
+import FirebaseAdmin from '@/models/firebase_admin';
 
 const DEFAULT_SIZE = 10;
 
@@ -76,11 +78,46 @@ async function postReply(req: NextApiRequest, res: NextApiResponse) {
   return res.status(201).end();
 }
 
+async function updateDeny(req: NextApiRequest, res: NextApiResponse) {
+  const token = req.headers.authorization;
+  if (token === undefined) {
+    throw new AuthorizationError('권한이 없습니다');
+  }
+
+  let tokenUid: string | null = null;
+  try {
+    const decode = await FirebaseAdmin.getInstance().Auth.verifyIdToken(token);
+    tokenUid = decode.uid;
+  } catch (err) {
+    throw new AuthorizationError('token에 문제가 있습니다');
+  }
+
+  const { uid, messageId, deny }: PostMessageDeny = req.body;
+
+  if (uid === undefined) {
+    throw new BadReqError('uid 누락');
+  }
+  if (uid !== tokenUid) {
+    throw new AuthorizationError('수정 권한이 없습니다');
+  }
+  if (messageId === undefined) {
+    throw new BadReqError('messageId 누락');
+  }
+  if (deny === undefined) {
+    throw new BadReqError('deny 누락');
+  }
+
+  const result = await MessageModel.updateDeny({ uid, messageId, deny });
+
+  return res.status(200).json(result);
+}
+
 const MessageCtrl = {
   post,
   list,
   get,
   postReply,
+  updateDeny,
 };
 
 export default MessageCtrl;

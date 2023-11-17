@@ -34,3 +34,9 @@ export interface PostMessageReply {
   messageId: string;
   reply: string;
 }
+
+export interface PostMessageDeny {
+  uid: string;
+  messageId: string;
+  deny: boolean;
+}
