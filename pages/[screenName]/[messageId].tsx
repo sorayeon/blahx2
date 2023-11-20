@@ -1,4 +1,4 @@
-import { Avatar, Box, Flex, Text } from '@chakra-ui/react';
+import { Avatar, Box, Button, Flex, Text } from '@chakra-ui/react';
 import { GetServerSideProps, NextPage } from 'next';
 import { useState } from 'react';
 import axios, { AxiosResponse } from 'axios';
@@ -7,15 +7,18 @@ import { useAuth } from '@/contexts/auth_user.context';
 import { InAuthUser } from '@/models/in_auth_user';
 import MessageItem from '@/components/message_item';
 import { InMessage } from '@/models/message/in_message';
+import Link from 'next/link';
+import { ChevronLeftIcon } from '@chakra-ui/icons';
 
 interface Props {
   userInfo: InAuthUser | null;
   messageData: InMessage | null;
+  screenName: string;
 }
 
 const BROKEN_IMAGE = 'https://bit.ly/broken-link';
 
-const MessagePage: NextPage<Props> = function ({ userInfo, messageData: initMsgData }) {
+const MessagePage: NextPage<Props> = function ({ userInfo, messageData: initMsgData, screenName }) {
   const [messageData, setMessageData] = useState<null | InMessage>(initMsgData);
   const { authUser } = useAuth();
 
@@ -41,6 +44,13 @@ const MessagePage: NextPage<Props> = function ({ userInfo, messageData: initMsgD
   return (
     <ServiceLayout title={`${userInfo.displayName}의 홈`} minH="100vh" backgroundColor="gray.50">
       <Box maxW="md" mx="auto" pt="6">
+        <Link href={`/${screenName}`}>
+          <a>
+            <Button leftIcon={<ChevronLeftIcon />} mb="2" fontSize="sm">
+              {userInfo.displayName} 홈으로
+            </Button>
+          </a>
+        </Link>
         <Box borderWidth="1px" borderRadius="lg" overflow="hidden" mb="2" bg="white">
           <Flex p="6">
             <Avatar size="lg" src={userInfo.photoURL ?? BROKEN_IMAGE} mr="2" />
@@ -67,11 +77,13 @@ const MessagePage: NextPage<Props> = function ({ userInfo, messageData: initMsgD
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ query }) => {
   const { screenName, messageId } = query;
+
   if (screenName === undefined || messageId === undefined) {
     return {
       props: {
         userInfo: null,
         messageData: null,
+        screenName: '',
       },
     };
   }
@@ -80,12 +92,16 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ query }) =
     const host = process.env.HOST || 'localhost';
     const port = process.env.PORT || '3000';
     const baseUrl = `${protocol}://${host}:${port}`;
+
+    const screenNameToStr = Array.isArray(screenName) ? screenName[0] : screenName;
+
     const userInfoResp: AxiosResponse<InAuthUser> = await axios(`${baseUrl}/api/user.info/${screenName}`);
     if (userInfoResp.status !== 200 || userInfoResp.data === undefined || userInfoResp.data.uid === undefined) {
       return {
         props: {
           userInfo: null,
           messageData: null,
+          screenName: screenNameToStr,
         },
       };
     }
@@ -98,6 +114,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ query }) =
       props: {
         userInfo: userInfoResp.data,
         messageData: messageInfoResp.status !== 200 || messageInfoResp.data === undefined ? null : messageInfoResp.data,
+        screenName: screenNameToStr,
       },
     };
   } catch (err) {
@@ -106,6 +123,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ query }) =
       props: {
         userInfo: null,
         messageData: null,
+        screenName: '',
       },
     };
   }
